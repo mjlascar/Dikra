@@ -8,6 +8,8 @@ on:
   push:
     branches: ["**"]
   pull_request:
+  # «Run workflow» en Actions: para publicar después de cargar los secretos, sin otro commit.
+  workflow_dispatch:
 
 # El nombre de la versión se cambia a mano; el número que compara la app es la corrida.
 env:
@@ -109,7 +111,7 @@ jobs:
       # enlace de descarga queda siempre igual. `version.json` es lo que mira la app para saber
       # si hay una nueva (src/main/java/app/dikra/Actualizador.java).
       - name: Publicar
-        if: steps.clave.outputs.estable == 'si' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: steps.clave.outputs.estable == 'si' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -141,7 +143,7 @@ jobs:
   web:
     name: Web para el iPhone
     needs: pruebas
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       pages: write
