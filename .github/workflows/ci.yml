@@ -15,6 +15,13 @@ on:
 env:
   DIKRA_VERSION: "0.1"
 
+# Una corrida a la vez por rama. En main cada una publica (borra y rehace el release, sube la
+# web) y dos encimadas se pisan: la que llega espera a la que corre, y si se juntan varias queda
+# esperando sólo la más nueva.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   pruebas:
     name: Pruebas
