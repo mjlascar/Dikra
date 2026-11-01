@@ -1,0 +1,184 @@
+name: CI
+
+# En cada push: las pruebas. En main, además:
+# - el APK firmado con la clave estable, publicado en el release `apk-latest` (lo que baja el
+#   teléfono, y con lo que la app se actualiza sola);
+# - la web en GitHub Pages (la versión para el iPhone).
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+# El nombre de la versión se cambia a mano; el número que compara la app es la corrida.
+env:
+  DIKRA_VERSION: "0.1"
+
+jobs:
+  pruebas:
+    name: Pruebas
+    runs-on: ubuntu-latest
+    steps:
+      # Acciones fijadas por commit, como en Slowtown: una etiqueta se puede mover.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+      - run: npm ci --ignore-scripts
+      - name: Tipos
+        run: npm run tipos
+      - name: Pruebas de la lógica de los viajes
+        run: npm test
+      - name: Armar la web
+        run: npm run web
+
+  apk:
+    name: APK
+    needs: pruebas
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+      # Sin caché: la que dejan otras corridas no tiene que poder meterse en un APK firmado.
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+        with:
+          cache-disabled: true
+      - name: Preparar el SDK
+        run: |
+          set -euo pipefail
+          sdkmanager=$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager | head -1)
+          "$sdkmanager" "platforms;android-37.0" "build-tools;36.0.0" > /dev/null
+
+      - name: Versión
+        run: |
+          echo "DIKRA_VERSION_CODE=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          echo "DIKRA_VERSION_NAME=$DIKRA_VERSION.$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+
+      # Android reconoce una app por su paquete y su firma: con otra clave no se instala encima,
+      # hay que desinstalar y eso borra los viajes. Por eso sin la clave estable el APK se arma
+      # (para saber que compila) pero no se publica.
+      - name: La clave estable
+        id: clave
+        env:
+          KEYSTORE_B64: ${{ secrets.DIKRA_KEYSTORE_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "estable=no" >> "$GITHUB_OUTPUT"
+            echo "::warning::Falta el secreto DIKRA_KEYSTORE_B64 (ver scripts/firma.sh): el APK se arma pero no se publica."
+            exit 0
+          fi
+          umask 077
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/dikra.keystore"
+          echo "DIKRA_KEYSTORE=$RUNNER_TEMP/dikra.keystore" >> "$GITHUB_ENV"
+          echo "estable=si" >> "$GITHUB_OUTPUT"
+
+      - name: Compilar
+        env:
+          DIKRA_KEYSTORE_PASSWORD: ${{ secrets.DIKRA_KEYSTORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          DIKRA_VERSION="$DIKRA_VERSION_NAME" scripts/armar-apk.sh release
+          rm -f "$RUNNER_TEMP/dikra.keystore"
+
+      # Que esté firmado con la clave de siempre: con otra, el teléfono no podría actualizarse.
+      - name: Verificar la firma
+        if: steps.clave.outputs.estable == 'si'
+        run: |
+          set -euo pipefail
+          esperada=$(tr -d '[:space:]' < scripts/firma.sha256)
+          huella=$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs dist/Dikra-release.apk \
+            | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+          if [ "$huella" != "$esperada" ]; then
+            echo "::error::El APK tiene la firma ${huella:-ninguna} y tendría que ser $esperada"
+            exit 1
+          fi
+
+      # El release se borra y se rehace para que la etiqueta apunte al commit compilado. El
+      # enlace de descarga queda siempre igual. `version.json` es lo que mira la app para saber
+      # si hay una nueva (src/main/java/app/dikra/Actualizador.java).
+      - name: Publicar
+        if: steps.clave.outputs.estable == 'si' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp dist/Dikra-release.apk Dikra.apk
+          sha=$(sha256sum Dikra.apk | cut -d' ' -f1)
+          printf '{"codigo":%s,"nombre":"%s","sha256":"%s"}\n' "$DIKRA_VERSION_CODE" "$DIKRA_VERSION_NAME" "$sha" > version.json
+          notas=$(printf '%s\n\n%s' \
+            "Dikra $DIKRA_VERSION_NAME, de ${GITHUB_SHA:0:8}." \
+            "Bajá Dikra.apk desde el teléfono y abrilo. Android va a pedir permitir instalar desde el navegador: es el paso normal para algo que no viene de Play. Las versiones siguientes se instalan desde Dikra → Ajustes.")
+          for _ in 1 2 3 4 5; do
+            gh release delete apk-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag 2>/dev/null || break
+          done
+          gh release create apk-latest Dikra.apk version.json --repo "$GITHUB_REPOSITORY" \
+            --prerelease --target "$GITHUB_SHA" --title "Dikra $DIKRA_VERSION_NAME" --notes "$notas"
+          # Con la etiqueta recién borrada, el release a veces queda en borrador sin un solo error
+          # (lo vio Waltra): se publica a mano y se verifica desde afuera.
+          for espera in 2 4 8 16 32; do
+            gh release edit apk-latest --repo "$GITHUB_REPOSITORY" --draft=false --prerelease >/dev/null 2>&1 || true
+            if curl -fsSL -o /dev/null "https://github.com/$GITHUB_REPOSITORY/releases/download/apk-latest/version.json"; then
+              echo "Descarga: https://github.com/$GITHUB_REPOSITORY/releases/download/apk-latest/Dikra.apk"
+              exit 0
+            fi
+            sleep "$espera"
+          done
+          echo "::error::El release apk-latest quedó en borrador: ni la app ni el enlace de descarga lo ven."
+          exit 1
+
+  web:
+    name: Web para el iPhone
+    needs: pruebas
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publicar.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "26"
+      # armar la web no necesita dependencias: sólo Node
+      - run: npm run web
+        env:
+          DIKRA_VERSION: ${{ env.DIKRA_VERSION }}.${{ github.run_number }}
+      # Pages se prende una vez a mano (Settings → Pages → GitHub Actions). Hasta entonces la
+      # web se arma igual y no se publica, sin dejar la corrida en rojo.
+      - name: ¿Está Pages?
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh api "repos/$GITHUB_REPOSITORY/pages" > /dev/null 2>&1; then
+            echo "activo=si" >> "$GITHUB_OUTPUT"
+          else
+            echo "activo=no" >> "$GITHUB_OUTPUT"
+            echo "::warning::GitHub Pages no está prendido: Settings → Pages → Source: GitHub Actions. La web se armó pero no se publicó."
+          fi
+      - if: steps.pages.outputs.activo == 'si'
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - if: steps.pages.outputs.activo == 'si'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: dist/web
+      - if: steps.pages.outputs.activo == 'si'
+        id: publicar
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

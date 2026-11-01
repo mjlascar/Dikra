@@ -1,0 +1,22 @@
+{
+  // Sólo para chequear tipos: el JavaScript lo arma scripts/armar-web.mjs sacándole los tipos con
+  // Node, sin compilador. Por eso el código usa sólo lo que se puede borrar (nada de enum ni
+  // namespace) e importa con la extensión .ts, igual que lo corre Node en las pruebas.
+  "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker.ImportScripts"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["web/src/**/*.ts", "pruebas/**/*.ts"]
+}

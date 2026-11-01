@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El ícono de web/iconos/icono.svg (512 de lado) achicado a la zona segura de 108 dp: un camino
+     con la salida, un punto de corte en el medio y la llegada. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.1875"
+        android:scaleY="0.1875"
+        android:translateX="6"
+        android:translateY="6">
+        <path
+            android:pathData="M140,380 C140,300 256,312 256,256 S372,212 372,132"
+            android:strokeColor="#F4F1E8"
+            android:strokeLineCap="round"
+            android:strokeWidth="46" />
+        <path
+            android:fillColor="#F4F1E8"
+            android:pathData="M104,380 a36,36 0 1,0 72,0 a36,36 0 1,0 -72,0" />
+        <path
+            android:fillColor="#F2B544"
+            android:pathData="M225,256 a31,31 0 1,0 62,0 a31,31 0 1,0 -62,0"
+            android:strokeColor="#1F6B45"
+            android:strokeWidth="13" />
+        <path
+            android:fillColor="#1F6B45"
+            android:pathData="M339,132 a33,33 0 1,0 66,0 a33,33 0 1,0 -66,0"
+            android:strokeColor="#F4F1E8"
+            android:strokeWidth="22" />
+    </group>
+</vector>

@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "dikra-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "scripts/servir.py",
+        "5190"
+      ],
+      "port": 5190
+    }
+  ]
+}

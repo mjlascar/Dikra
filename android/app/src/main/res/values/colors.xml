@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- El mismo fondo que la página (la variable fondo de estilo.css): sin flash de otro color al abrir. -->
+    <color name="fondo">#F3F4EF</color>
+    <color name="icono_fondo">#1F6B45</color>
+</resources>

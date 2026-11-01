@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- El ícono chico de los avisos: sólo la silueta (Android lo pinta del color que quiere). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group
+        android:scaleX="0.0625"
+        android:scaleY="0.0625"
+        android:translateX="-4"
+        android:translateY="-4">
+        <path
+            android:pathData="M140,380 C140,300 256,312 256,256 S372,212 372,132"
+            android:strokeColor="#FFFFFF"
+            android:strokeLineCap="round"
+            android:strokeWidth="46" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M104,380 a36,36 0 1,0 72,0 a36,36 0 1,0 -72,0" />
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M330,132 a42,42 0 1,0 84,0 a42,42 0 1,0 -84,0" />
+    </group>
+</vector>

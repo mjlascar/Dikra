@@ -1,0 +1,17 @@
+{
+  "name": "dikra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Cuánto tarda cada tramo del camino a Colinas Verdes",
+  "scripts": {
+    "web": "node --disable-warning=ExperimentalWarning scripts/armar-web.mjs",
+    "test": "node --test --disable-warning=ExperimentalWarning 'pruebas/**/*.test.ts'",
+    "tipos": "tsc --noEmit",
+    "check": "npm run tipos && npm test && npm run web"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "6.0.3"
+  }
+}
