@@ -3,8 +3,8 @@
  * y graba sin señal (en Colinas Verdes puede no haber). En el APK no se usa: ahí la app viene
  * adentro.
  *
- * scripts/armar-web.mjs reemplaza __VERSION__ y __ARCHIVOS__. Una versión nueva se instala al
- * lado y espera: la página ofrece «Actualizar» y recién ahí pasa (nunca en medio de un viaje).
+ * scripts/armar-web.mjs le pone la versión y la lista de archivos. Una versión nueva se instala
+ * al lado y espera: la página ofrece «Actualizar» y recién ahí pasa (nunca en medio de un viaje).
  */
 const CACHE = 'dikra-__VERSION__';
 const ARCHIVOS = __ARCHIVOS__;

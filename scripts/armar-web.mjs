@@ -53,9 +53,17 @@ for (const n of ['index.html', 'estilo.css', 'manifest.webmanifest', 'iconos', '
 // El service worker guarda todo, menos los viajes de prueba (sólo los pide el modo simulado).
 const lista = ['./', ...archivos(SALIDA).map((p) => relative(SALIDA, p)).filter((p) => p !== 'datos/demo.json').sort()];
 const sw = readFileSync(join(WEB, 'sw.js'), 'utf8')
-  .replace('__VERSION__', VERSION)
-  .replace('__ARCHIVOS__', JSON.stringify(lista, null, 2));
+  .replaceAll('__VERSION__', VERSION)
+  .replaceAll('__ARCHIVOS__', JSON.stringify(lista, null, 2));
 writeFileSync(join(SALIDA, 'sw.js'), sw);
+
+// Un marcador sin reemplazar no da ningún error a la vista: en sw.js dejaba a la web sin service
+// worker (sin señal no abría, y nunca ofrecía «Actualizar»). Mejor que falle el armado.
+for (const p of archivos(SALIDA).filter((p) => /\.(js|html|webmanifest)$/.test(p))) {
+  if (/__(VERSION|ARCHIVOS)__/.test(readFileSync(p, 'utf8'))) {
+    throw new Error(`Quedó un marcador sin reemplazar en ${relative(SALIDA, p)}`);
+  }
+}
 
 const peso = archivos(SALIDA).reduce((s, p) => s + statSync(p).size, 0);
 console.log(`dist/web: Dikra ${VERSION}, ${lista.length} archivos, ${(peso / 1e6).toFixed(2)} MB`);
